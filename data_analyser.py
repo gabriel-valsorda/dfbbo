@@ -121,7 +121,9 @@ def performance_profil(tau):
         for ind_a, a in enumerate(algo):
             fx = data_extracter(a, p, method="simple")
             fbest[ind_p][ind_a] = np.min(fx)
+    fbest = np.min(fbest)
 
+    
     for ind_a, a in enumerate(algo):
         for ind_p, p in enumerate(instance):
             fx = data_extracter(a, p, method="simple")
@@ -132,7 +134,7 @@ def performance_profil(tau):
                 if facc(f_val,fx[0],np.min(fbest[ind_p])) >= (1-tau):
                     Nap[ind_a, ind_p] = i
                     Tap[ind_a, ind_p] = 1
-                    
+                    print(i)
                 if Tap[ind_a, ind_p] == 1:
                     rap[ind_a, ind_p] = Nap[ind_a, ind_p] / np.min(Nap)
                 else:
@@ -141,3 +143,22 @@ def performance_profil(tau):
     return
 
 
+tau = 0.1
+fx = data_extracter(1, 19, method="simple")
+
+fbest = np.min(fx)
+
+
+
+
+
+for i, f_val in enumerate(fx):
+    if facc(f_val,fx[0],np.min(fbest)) >= (1-tau):
+        Nap[0, 0] = i
+        Tap[0, 0] = 1
+        
+    if Tap[0, 0] == 1:
+        rap[0, 0] = Nap[1, 0] / np.min(Nap)
+    else:
+        rap[0, 0] = 1e6
+    
