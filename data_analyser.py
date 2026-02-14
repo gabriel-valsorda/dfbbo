@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import griddata
 import matplotlib.animation as animation
-
+import pandas as pd
 
 def animated_plot(x1, x2, fx):
     fig, ax = plt.subplots(figsize=(8,6))
@@ -21,9 +21,12 @@ def animated_plot(x1, x2, fx):
 def data_extracter(algo_num, instance,max_index=0,method=""):
     '''return x1, x2, fx'''
     path = f"Ch4/1/Algo_{algo_num}/{instance}/history.0.txt"
-    data = np.loadtxt(path)
+    
     if method == "simple":
+        data = pd.read_csv(path, sep=r"\s+",header=None).to_numpy()
         return data[:, -1]
+    
+    data = np.loadtxt(path)
     if len(data[0])==4:
         return data[:, :-1][:,0], data[:, :-1][:,1], data[:, :-1][:,2], data[:, -1]
     if len(data[0])!=3:
@@ -107,58 +110,85 @@ def facc(f_val, f0, fbest):
 tau = [0.05, 0.01]
 
 algo = [1,2]
-instance = [19,37]
+instance = np.arange(1,160,1)
 
 Nap = np.zeros((len(algo), len(instance)))
-Tap = np.zeros((len(algo), len(instance)))
-rap = np.zeros((len(algo), len(instance)))
 
-def performance_profil(tau):
-    
-    # Best value
-    fbest = np.zeros((len(instance), len(algo)))
-    for ind_p, p in enumerate(instance):
-        for ind_a, a in enumerate(algo):
-            fx = data_extracter(a, p, method="simple")
-            fbest[ind_p][ind_a] = np.min(fx)
-    fbest = np.min(fbest)
+def analysis(tau,algo, instance):
 
-    
+    fbest = 1e6
+    # finding fbest
     for ind_a, a in enumerate(algo):
         for ind_p, p in enumerate(instance):
             fx = data_extracter(a, p, method="simple")
-
-            
-
-            for i, f_val in enumerate(fx):
-                if facc(f_val,fx[0],np.min(fbest[ind_p])) >= (1-tau):
-                    Nap[ind_a, ind_p] = i
-                    Tap[ind_a, ind_p] = 1
-                    print(i)
-                if Tap[ind_a, ind_p] == 1:
-                    rap[ind_a, ind_p] = Nap[ind_a, ind_p] / np.min(Nap)
+            if np.min(fx) < fbest:
+                if np.min(fx) == None:
+                    continue
                 else:
-                    rap[ind_a, ind_p] = 1e6
+                    fbest = np.min(fx)
+                    
+    for ind_a, a in enumerate(algo):
+        for ind_p, p in enumerate(instance):
+            # Findind N
+            fx = data_extracter(a, p, method="simple")
+            facc = (fx-fx[0]) / (fbest - fx[0])
+            # print(facc)
+            Nap[ind_a, ind_p] = np.argmax(facc >= 1-tau)
 
-    return
+    Tap = np.where(Nap != 0, 1, 0)
+    Nap_min = np.min(np.where(Tap==1, Nap, np.inf))
+    rap = np.where(Tap == 1, Nap/Nap_min, np.inf)
 
+    return Nap, Tap, rap
 
-tau = 0.1
-fx = data_extracter(1, 19, method="simple")
+def performance_profile(tau, algo, instance, ):
+    Nap, Tap, rap = analysis(tau,algo, instance)
+    alpha_steps = 100
+    alpha_ratio = np.linspace(0.1,5,150)
+    rho = np.zeros((len(algo), len(alpha_ratio)))
 
-fbest = np.min(fx)
+    for ind_algo in range(len(algo)):
+        for i_a, a in enumerate(alpha_ratio*alpha_steps):
+            rho[ind_algo, i_a] = np.sum(rap[ind_algo] <= a) / rap.shape[-1]
 
+    return alpha_ratio, rho
 
+def data_profile(tau, algo, instance, k_groupe=np.linspace(0, 25, 100)):
+    Nap, Tap, rap = analysis(tau, algo, instance)
+    np = instance + 1
 
-
-
-for i, f_val in enumerate(fx):
-    if facc(f_val,fx[0],np.min(fbest)) >= (1-tau):
-        Nap[0, 0] = i
-        Tap[0, 0] = 1
-        
-    if Tap[0, 0] == 1:
-        rap[0, 0] = Nap[1, 0] / np.min(Nap)
-    else:
-        rap[0, 0] = 1e6
+    da = np.zeros((len(algo), len(k_groupe)))
+    for ind_algo in range(len(algo)):
+        for i_k, k in enumerate(k_groupe):
+            da[ind_algo, i_k] = np.sum(Nap[ind_algo] <= (np+1)*k*Tap[ind_algo]) / Nap.shape[-1]
+    return da
     
+
+
+
+
+fig, ax = plt.subplots(2, 2, figsize=(8, 6))
+
+
+# ax[0, 0].set_title("Performance profile")
+# alpha_ratio, rho = performance_profile(tau[0],algo, instance)
+# ax[0,0].plot(alpha_ratio, rho[0,:], label='algo_1')
+# ax[0,0].plot(alpha_ratio, rho[1,:], label='algo_2')
+
+# ax[1, 0].set_title("Performance profile")
+# alpha_ratio, rho = performance_profile(tau[1],algo, instance)
+# ax[1,0].plot(alpha_ratio, rho[0,:], label='algo_1')
+# ax[1,0].plot(alpha_ratio, rho[1,:], label='algo_2')
+
+ax[0, 1].set_title("Data profile")
+k_groupe = np.linspace(0, 25, 100)
+da = data_profile(tau[0], algo, instance,k_groupe=k_groupe)
+ax[0,1].plot(k_groupe, da[0,:], label='algo_1')
+ax[0,1].plot(k_groupe, da[1,:], label='algo_2')
+
+# ax[1, 1].set_title("Data profile")
+
+
+
+# plt.tight_layout()
+# plt.show()
