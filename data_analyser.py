@@ -100,9 +100,6 @@ if False:
 
 #%%
 
-# fig, (r1, r2, l1, l2) = plt.subplots(2, 2, figsize=(6.5,12))
-
-
 def facc(f_val, f0, fbest):
     return (f_val-f0) / (fbest - f0)
 
@@ -112,10 +109,9 @@ tau = [0.05, 0.01]
 algo = [1,2]
 instance = np.arange(1,160,1)
 
-Nap = np.zeros((len(algo), len(instance)))
+
 
 def analysis(tau,algo, instance):
-
     fbest = 1e6
     # finding fbest
     for ind_a, a in enumerate(algo):
@@ -126,13 +122,13 @@ def analysis(tau,algo, instance):
                     continue
                 else:
                     fbest = np.min(fx)
-                    
+
+    Nap = np.zeros((len(algo), len(instance)))
     for ind_a, a in enumerate(algo):
         for ind_p, p in enumerate(instance):
             # Findind N
             fx = data_extracter(a, p, method="simple")
             facc = (fx-fx[0]) / (fbest - fx[0])
-            # print(facc)
             Nap[ind_a, ind_p] = np.argmax(facc >= 1-tau)
 
     Tap = np.where(Nap != 0, 1, 0)
@@ -142,28 +138,37 @@ def analysis(tau,algo, instance):
     return Nap, Tap, rap
 
 def performance_profile(tau, algo, instance):
-    Nap, Tap, rap = analysis(tau,algo, instance)
-    alpha_steps = 100
-    alpha_ratio = np.linspace(0.1,5,30)
+    rap = analysis(tau, algo, instance)[2]
+    
+    alpha_ratio = np.arange(1, 30, 1)
     rho = np.zeros((len(algo), len(alpha_ratio)))
 
     for ind_algo in range(len(algo)):
-        for i_a, a in enumerate(alpha_ratio*alpha_steps):
-            rho[ind_algo, i_a] = np.sum(rap[ind_algo] <= a) / rap.shape[-1]
-
+        for i_a, a in enumerate(alpha_ratio**2):
+            rho[ind_algo, i_a] = np.sum(np.where(rap[ind_algo]<=a, 1, 0)) / len(instance)
+    
     return alpha_ratio, rho
+    
+def data_dim(algo, instance):
+    n_p = np.zeros((len(algo), len(instance)))
+    for ind_a, a in enumerate(algo):
+        for ind_i, i in enumerate(instance):
+            with open(f"Ch4/1/Algo_{a}/{i}/history.0.txt", "r") as f:
+                n_p[ind_a, ind_i] = len(np.fromstring(f.readline(), sep=" ")[:-1])
+    return n_p
+
 
 def data_profile(tau, algo, instance, k_groupe=np.linspace(0, 25, 100)):
-    Nap, Tap, rap = analysis(tau, algo, instance)
-    n_p = instance + 1
+    Nap, Tap = analysis(tau, algo, instance)[:-1]
+    n_p = data_dim(algo, instance)
 
     da = np.zeros((len(algo), len(k_groupe)))
 
     for ind_algo in range(len(algo)):
         for i_k, k in enumerate(k_groupe):
-            da[ind_algo, i_k] = np.sum(Nap[ind_algo] <= (n_p+1)*k*Tap[ind_algo]) / Nap.shape[-1]
+            da[ind_algo, i_k] = np.sum(np.where((Nap[ind_algo] <= (n_p[ind_algo]+1)*k*Tap[ind_algo]) & (Tap[ind_algo]==1), 1, 0)) / len(instance)
+
     return da
-    
 
 
 
@@ -175,8 +180,9 @@ alpha_label = r"$\alpha$"
 
 ax[0, 0].set_title(f"Performance profile {tau_label}={tau[0]*100}%")
 alpha_ratio, rho = performance_profile(tau[0],algo, instance)
-ax[0,0].step(alpha_ratio, rho[0,:], label='algo_1', marker='^', where='post')
-ax[0,0].step(alpha_ratio, rho[1,:], label='algo_2', marker='o', where='post')
+ax[0,0].step(alpha_ratio, rho[0,:], label='algo_1', marker='^', where='post', ms=5)
+ax[0,0].step(alpha_ratio, rho[1,:], label='algo_2', marker='o', where='post', ms=5)
+ax[0,0].set_ylim(0,1)
 ax[0,0].legend()
 ax[0,0].set_xlabel(f"Ratio of function evaluations {alpha_label}")
 ax[0,0].set_ylabel(f"Portion of {tau_label}-solved instances {rho_label}")
@@ -185,8 +191,9 @@ ax[0,0].grid()
 
 ax[1, 0].set_title(f"Performance profile {tau_label}={tau[1]*100}%")
 alpha_ratio, rho = performance_profile(tau[1],algo, instance)
-ax[1,0].step(alpha_ratio, rho[0,:], label='algo_1', marker='^', where='post')
-ax[1,0].step(alpha_ratio, rho[1,:], label='algo_2', marker='o', where='post')
+ax[1,0].step(alpha_ratio, rho[0,:], label='algo_1', marker='^', where='post', ms=5)
+ax[1,0].step(alpha_ratio, rho[1,:], label='algo_2', marker='o', where='post', ms=5)
+ax[1,0].set_ylim(0,1)
 ax[1,0].legend()
 ax[1,0].set_xlabel(f"Ratio of function evaluations {alpha_label}")
 ax[1,0].set_ylabel(f"Portion of {tau_label}-solved instances {rho_label}")
@@ -195,21 +202,23 @@ ax[1,0].grid()
 ax[0, 1].set_title(f"Data profile {tau_label}={tau[0]*100}%")
 k_groupe = np.linspace(0, 25, 30)
 da = data_profile(tau[0], algo, instance,k_groupe=k_groupe)
-ax[0,1].step(k_groupe, da[0,:], label='algo_1', marker='^', where='post')
-ax[0,1].step(k_groupe, da[1,:], label='algo_2', marker='o', where='post')
+ax[0,1].step(k_groupe, da[0,:], label='algo_1', marker='^', where='post', ms=5)
+ax[0,1].step(k_groupe, da[1,:], label='algo_2', marker='o', where='post', ms=5)
+ax[0,1].set_ylim(0,1)
 ax[0,1].legend()
-ax[0,1].set_xlabel(f"Ratio of function evaluations {alpha_label}")
-ax[0,1].set_ylabel(f"Portion of {tau_label}-solved instances {rho_label}")
+ax[0,1].set_xlabel(f"Groups of {r"$n_p+1$"} evaluations {r"$k$"}")
+ax[0,1].set_ylabel(f"Portion of {tau_label}-solved instances {r"$d_a(k)$"}")
 ax[0,1].grid()
 
 ax[1, 1].set_title(f"Data profile {tau_label}={tau[1]*100}%")
 k_groupe = np.linspace(0, 25, 30)
 da = data_profile(tau[1], algo, instance,k_groupe=k_groupe)
-ax[1,1].step(k_groupe, da[0,:], label='algo_1', marker='^', where='post')
-ax[1,1].step(k_groupe, da[1,:], label='algo_2', marker='o', where='post')
+ax[1,1].step(k_groupe, da[0,:], label='algo_1', marker='^', where='post', ms=5)
+ax[1,1].step(k_groupe, da[1,:], label='algo_2', marker='o', where='post', ms=5)
+ax[1,1].set_ylim(0,1)
 ax[1,1].legend()
-ax[1,1].set_xlabel(f"Ratio of function evaluations {alpha_label}")
-ax[1,1].set_ylabel(f"Portion of {tau_label}-solved instances {rho_label}")
+ax[1,1].set_xlabel(f"Groups of {r"$n_p+1$"} evaluations {r"$k$"}")
+ax[1,1].set_ylabel(f"Portion of {tau_label}-solved instances {r"$d_a(k)$"}")
 ax[1,1].grid()
 
 
