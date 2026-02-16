@@ -1,6 +1,15 @@
 import numpy as np
 
 
+def McKinnon_fct(x):
+    x1, x2 = x
+    if x1 >= 0:
+        return 360*x1**2 + x2**2 + x2
+    else:
+        return 6*x1**2 + x2**2 + x2
+    
+    
+
 def Nelden_Mead(fct, simplex):
     # evaluate simplex
     simplex_val = fct(simplex)
