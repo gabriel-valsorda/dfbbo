@@ -1,3 +1,4 @@
+#%%
 import numpy as np  
 import matplotlib.pyplot as plt
 
@@ -12,16 +13,17 @@ def Nelden_Mead(fct, simplex, diam_tol = 1e-3, max_eval = 250):
     f = np.array([fct(s) for s in simplex])
     # dimension
     n = len(simplex[0])
-    neval = len(f)
+    neval = 0
 
     while neval <= max_eval:
 # Diameter tolerance
         diam = max(np.linalg.norm(simplex[i]-simplex[j])
                    for i in range(n+1)
                    for j in range(n+1))
-        if diam < diam_tol:
-            print("NM stopped because of small simplex radius")
-            break
+        # if diam < diam_tol:
+        #     print("NM stopped because of small simplex radius")
+        #     print(f"Diameter: {diam:.4e} < {diam_tol:.4e}")
+        #     break
 
 # 1) SORTING
         # Sort simplex [y0,...,yn]
@@ -79,31 +81,32 @@ def Nelden_Mead(fct, simplex, diam_tol = 1e-3, max_eval = 250):
             simplex[i] = simplex[0] + gamma*(simplex[i]-simplex[0])
             f[i] = fct(simplex[i])
         
-        neval += n
+        neval += 1
     print(f"NM reached {neval} function evaluations")
     return f, simplex
 
 def McKinnon_fct(x):
     x1, x2 = x
-    if x1 >= 0:
+    if x1 <= 0:
         return 360*x1**2 + x2**2 + x2
     else:
         return 6*x1**2 + x2**2 + x2
 def McKinnon_fct_np(X1, X2):
     return np.where(X1 <= 0, 360*X1**2 + X2 + X2**2, 6*X1**2 + X2 + X2**2)
 
+#%% a)
 Lambda = (1+np.sqrt(33)) / 8
 Mu = (1-np.sqrt(33)) / 8
 
 Initial_McKinnon_simplex = np.array([[0,0], [Lambda, Mu], [1,1]])
-# f, simplex = Nelden_Mead(McKinnon_fct, Initial_McKinnon_simplex)
+f, simplex = Nelden_Mead(McKinnon_fct, Initial_McKinnon_simplex)
 
-# print(f, simplex)
+print(f, simplex)
 
-# b) 
-def pts_generator_unit_cercle(center, rayon=1):
+#%% b) 
+def pts_generator_unit_cercle(center, rayon=1, size=20):
     h, k = center
-    x = np.random.uniform(h-rayon, h+rayon, size=20)
+    x = np.random.uniform(h-rayon, h+rayon, size=size)
 
     pts = np.zeros((20,2))
     for i in range(len(x)):
@@ -113,24 +116,35 @@ def pts_generator_unit_cercle(center, rayon=1):
     return pts
 
 
-pts = pts_generator_unit_cercle([1,1])
+pts = pts_generator_unit_cercle([10,5])
 
-fct, simplex = Nelden_Mead(McKinnon_fct, pts)
-print(fct)
+# fct, simplex = Nelden_Mead(McKinnon_fct, pts)
+# print(fct)
 
 plt.figure()
 
-x1 = np.linspace(-0.25, 2, 100)
-x2 = np.linspace(-0.5, 2.5, 100)
+x1 = np.linspace(-0.2, 1.1, 100)
+x2 = np.linspace(-1.5, 1.5, 100)
 X1, X2 = np.meshgrid(x1,x2)
 contours = plt.contour(X1, X2, McKinnon_fct_np(X1, X2), levels=50)
-
+# plt.scatter(simplex[:,0], simplex[:,1], color='red', label='Simplex vertices')
+# plt.scatter(pts[:,0], pts[:,1], color='blue', label='Initial points')
+Initial_McKinnon_simplex = np.vstack([Initial_McKinnon_simplex, Initial_McKinnon_simplex[0]])
+simplex = np.vstack([simplex, simplex[0]])
+plt.plot(Initial_McKinnon_simplex[:,0], Initial_McKinnon_simplex[:,1], color='red', marker='o', label='Initial simplex vertices')
+plt.plot(simplex[:,0], simplex[:,1], color='green', marker='o', label='Final simplex vertices')
 
 plt.clabel(contours, inline=True, fontsize=8)
 plt.xlabel("x1")
 plt.ylabel("x2")
-plt.axis('scaled')
+# plt.axis('scaled')
 plt.grid()
 plt.xticks()
 plt.yticks()
 plt.show()
+
+
+
+
+
+
