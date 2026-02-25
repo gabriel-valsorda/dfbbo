@@ -53,8 +53,8 @@ def Convergence_plot(fx):
             f0 = value
     return iter_num_fbest, fbest
 
-ab = False
-if ab:
+
+if True:
     for inst in [19,37]:
         fig, (ax2, ax1) = plt.subplots(1, 2, figsize=(5,12))
 
@@ -84,7 +84,7 @@ if ab:
 
 #%%
 
-if False:
+if True:
     plt.figure()
     for algo in [1,2]:
         x1, x2, x3, fx = data_extracter(algo,52)
